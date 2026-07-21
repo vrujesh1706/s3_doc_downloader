@@ -1,0 +1,356 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --bg: #f6f7f9;
+  --text: #17202a;
+  --text-muted: #5b6472;
+  --surface: #ffffff;
+  --border: #d9dee7;
+  --shadow: rgba(20, 31, 44, 0.04);
+  --label-text: #313b49;
+  --input-bg: #ffffff;
+  --input-border: #cbd3df;
+  --input-text: #17202a;
+  --chip-text: #263241;
+  --button-bg: #ffffff;
+  --button-border: #b9c2cf;
+  --button-text: #17202a;
+  --primary-bg: #176b87;
+  --primary-border: #176b87;
+  --primary-text: #ffffff;
+  --table-header-bg: #f1f4f7;
+  --table-border: #e7ebf0;
+  --empty-text: #687386;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --bg: #14181f;
+    --text: #e7ebf2;
+    --text-muted: #97a2b4;
+    --surface: #1b212b;
+    --border: #2b3341;
+    --shadow: rgba(0, 0, 0, 0.28);
+    --label-text: #c3cbd8;
+    --input-bg: #10141a;
+    --input-border: #333d4d;
+    --input-text: #e7ebf2;
+    --chip-text: #d3dae5;
+    --button-bg: #232b38;
+    --button-border: #3a4456;
+    --button-text: #e7ebf2;
+    --primary-bg: #2596bb;
+    --primary-border: #2596bb;
+    --primary-text: #0b1015;
+    --table-header-bg: #202836;
+    --table-border: #2b3341;
+    --empty-text: #8b95a7;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #14181f;
+  --text: #e7ebf2;
+  --text-muted: #97a2b4;
+  --surface: #1b212b;
+  --border: #2b3341;
+  --shadow: rgba(0, 0, 0, 0.28);
+  --label-text: #c3cbd8;
+  --input-bg: #10141a;
+  --input-border: #333d4d;
+  --input-text: #e7ebf2;
+  --chip-text: #d3dae5;
+  --button-bg: #232b38;
+  --button-border: #3a4456;
+  --button-text: #e7ebf2;
+  --primary-bg: #2596bb;
+  --primary-border: #2596bb;
+  --primary-text: #0b1015;
+  --table-header-bg: #202836;
+  --table-border: #2b3341;
+  --empty-text: #8b95a7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.shell {
+  width: min(1220px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 28px 0 40px;
+}
+
+.toolbar,
+.filters,
+.file-panel,
+.actions,
+.results {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px var(--shadow);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 16px;
+}
+
+p {
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  color: var(--label-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+textarea,
+input,
+select {
+  width: 100%;
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  color: var(--input-text);
+  background: var(--input-bg);
+}
+
+textarea {
+  min-height: 92px;
+  resize: vertical;
+  padding: 10px;
+}
+
+input[type="number"] {
+  height: 38px;
+  padding: 0 10px;
+}
+
+select {
+  height: 38px;
+  padding: 0 10px;
+}
+
+.file-panel,
+.results {
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.panel-head,
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mini-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.file-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--chip-text);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.file-option:hover {
+  border-color: var(--primary-border);
+}
+
+.file-option:has(input:checked) {
+  background: color-mix(in srgb, var(--primary-bg) 10%, transparent);
+  border-color: var(--primary-border);
+}
+
+.file-option span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-option input[type="checkbox"] {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary-bg);
+}
+
+.actions {
+  justify-content: flex-start;
+  margin-top: 16px;
+  padding: 14px 16px;
+}
+
+.actions label {
+  width: 170px;
+}
+
+button {
+  min-height: 38px;
+  border: 1px solid var(--button-border);
+  border-radius: 6px;
+  padding: 0 14px;
+  background: var(--button-bg);
+  color: var(--button-text);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+button.primary {
+  border-color: var(--primary-border);
+  background: var(--primary-bg);
+  color: var(--primary-text);
+}
+
+button.icon {
+  min-height: 38px;
+  min-width: 38px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+#status,
+#resultCount {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.table-wrap {
+  overflow: auto;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+th,
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--table-border);
+  text-align: left;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+th {
+  background: var(--table-header-bg);
+  color: var(--label-text);
+  font-weight: 750;
+}
+
+tr:last-child td {
+  border-bottom: 0;
+}
+
+.empty-row {
+  color: var(--empty-text);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .toolbar,
+  .panel-head,
+  .actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filters,
+  .file-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions label {
+    width: 100%;
+  }
+}

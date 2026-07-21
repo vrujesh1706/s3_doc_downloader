@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>S3 Document Downloader</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script>
+      (function () {
+        var saved = localStorage.getItem("theme");
+        if (saved === "dark" || saved === "light") {
+          document.documentElement.setAttribute("data-theme", saved);
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="toolbar">
+        <div>
+          <h1>S3 Document Downloader</h1>
+          <p>Search encounters and download selected document outputs as a ZIP.</p>
+        </div>
+        <div class="toolbar-actions">
+          <button id="themeToggleBtn" class="icon" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+          <button id="downloadBtn" class="primary" disabled>Download ZIP</button>
+        </div>
+      </section>
+
+      <section class="filters">
+        <label>
+          Environment
+          <select id="environment">
+            <option value="production" selected>Production</option>
+            <option value="staging">Staging</option>
+          </select>
+        </label>
+        <label>
+          Client
+          <select id="client">
+            <option value="">Select a client...</option>
+          </select>
+        </label>
+        <label>
+          Account numbers
+          <textarea id="account_numbers" placeholder="9619150-720680, 4599278-449254"></textarea>
+        </label>
+        <label>
+          Encounter IDs
+          <textarea id="encounter_ids" placeholder="37750838, 37738090"></textarea>
+        </label>
+      </section>
+
+      <section class="file-panel">
+        <div class="panel-head">
+          <h2>File outputs</h2>
+          <div class="mini-actions">
+            <button id="selectAllBtn" type="button">All</button>
+            <button id="clearFilesBtn" type="button">Clear</button>
+          </div>
+        </div>
+        <div id="fileTypes" class="file-grid"></div>
+      </section>
+
+      <section class="actions">
+        <label>
+          Result limit
+          <input id="limit" type="number" min="1" max="500" value="100" />
+        </label>
+        <label>
+          Folder structure
+          <select id="folder_structure">
+            <option value="facility_wise" selected>Facility wise</option>
+            <option value="single_folder">One folder</option>
+          </select>
+        </label>
+        <button id="searchBtn" class="primary" type="button">Search</button>
+        <span id="status" role="status"></span>
+      </section>
+
+      <section class="results">
+        <div class="panel-head">
+          <h2>Results</h2>
+          <span id="resultCount">No search yet</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input id="toggleRows" type="checkbox" /></th>
+                <th>Account</th>
+                <th>Encounter</th>
+                <th>Client</th>
+                <th>Facility</th>
+                <th>Service date</th>
+                <th>Files</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
