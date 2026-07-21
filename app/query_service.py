@@ -18,6 +18,7 @@ FILE_COLUMNS: dict[str, str] = {
     "cptcs_result_s3_path": "CPT result",
     "cmcs_result_s3_path": "CMCS result",
     "filePath": "Original document",
+    "orignal_path": "PDF document",
 }
 
 INNER_SQL = """
@@ -35,6 +36,7 @@ SELECT
     epm.cptcs_result_s3_path,
     epm.cmcs_result_s3_path,
     dm.path AS filePath,
+    dm.orignal_path,
     ROW_NUMBER() OVER (
         PARTITION BY am.id
         ORDER BY dm.created_date DESC, dm.id DESC
@@ -94,10 +96,73 @@ def count_available_files(row: dict[str, Any], selected_files: list[FileColumn])
     return sum(1 for column in selected_file_columns(selected_files) if row.get(column))
 
 
+def _present_value(value: Any) -> str | None:
+    if value is None:
+        return None
+    item = str(value).strip()
+    if not item or item.lower() in {"nan", "none", "null"}:
+        return None
+    return item
+
+
+def group_by_encounter(
+    rows: list[dict[str, Any]], selected_files: list[FileColumn]
+) -> list[dict[str, Any]]:
+    """Collapse per-document rows into one row per encounter.
+
+    Each search row is a single document, so a multi-document encounter shows up
+    as several rows that share the same encounter-level id. This groups them and,
+    for every selected file column, counts the *distinct* files that would end up
+    in the download folder (matching the per-folder dedup in the zip step) -- e.g.
+    one shared CPT request JSON but five unique PCS XML results.
+    """
+    columns = selected_file_columns(selected_files)
+    groups: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+
+    for row in rows:
+        key = row.get("id") or row_id(row)
+        group = groups.get(key)
+        if group is None:
+            group = {
+                "id": key,
+                "account_number": row.get("account_number"),
+                "encounter_id": row.get("encounter_id"),
+                "client_id": row.get("client_id"),
+                "facility_id": row.get("facility_id"),
+                "service_date": row.get("service_date"),
+                "document_count": 0,
+                "_seen": {column: set() for column in columns},
+            }
+            groups[key] = group
+            order.append(key)
+
+        group["document_count"] += 1
+        for column in columns:
+            present = _present_value(row.get(column))
+            if present is not None:
+                group["_seen"][column].add(present)
+
+    output: list[dict[str, Any]] = []
+    for key in order:
+        group = groups[key]
+        seen: dict[str, set[str]] = group.pop("_seen")
+        breakdown = [
+            {"column": column, "label": FILE_COLUMNS[column], "count": len(seen[column])}
+            for column in columns
+        ]
+        group["file_breakdown"] = breakdown
+        group["download_file_count"] = sum(item["count"] for item in breakdown)
+        group["is_multidoc"] = group["document_count"] > 1
+        output.append(group)
+    return output
+
+
 def search_documents(engine: Engine, request: SearchRequest) -> list[dict[str, Any]]:
     settings = get_settings()
     filters: list[str] = []
-    params: dict[str, Any] = {"limit": min(request.limit or settings.max_search_rows, settings.max_search_rows)}
+    # No user-facing result limit; cap at max_search_rows as a safety bound only.
+    params: dict[str, Any] = {"limit": settings.max_search_rows}
 
     filter_map = [
         ("account_numbers", "am.account_number", normalize_values(request.account_numbers)),
