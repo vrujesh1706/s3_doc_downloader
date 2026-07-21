@@ -21,10 +21,7 @@ def _bool_env(name: str, default: bool = False) -> bool:
 def _int_env(name: str, default: int) -> int:
     value = os.getenv(name)
     if value is None or value.strip() == "":
-        print(f"DEBUG: {name} not set, using default {default}")
         return default
-
-    print(f"DEBUG: {name}={value}")
     return int(value)
 
 

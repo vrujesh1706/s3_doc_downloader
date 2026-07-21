@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>S3 Document Downloader</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=7" />
     <script>
       (function () {
         var saved = localStorage.getItem("theme");
@@ -64,10 +64,6 @@
 
       <section class="actions">
         <label>
-          Result limit
-          <input id="limit" type="number" min="1" max="500" value="100" />
-        </label>
-        <label>
           Folder structure
           <select id="folder_structure">
             <option value="facility_wise" selected>Facility wise</option>
@@ -75,7 +71,14 @@
           </select>
         </label>
         <button id="searchBtn" class="primary" type="button">Search</button>
-        <span id="status" role="status"></span>
+        <div class="progress" aria-live="polite">
+          <span id="spinner" class="spinner" hidden></span>
+          <span id="status" role="status"></span>
+        </div>
+        <div id="progressBar" class="progress-bar" hidden>
+          <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+          <span id="progressCount" class="progress-count"></span>
+        </div>
       </section>
 
       <section class="results">
@@ -93,14 +96,31 @@
                 <th>Client</th>
                 <th>Facility</th>
                 <th>Service date</th>
-                <th>Files</th>
+                <th>Multi-doc</th>
+                <th>Files to download</th>
               </tr>
             </thead>
             <tbody id="rows"></tbody>
           </table>
         </div>
+        <div id="pagination" class="pagination" hidden>
+          <label class="page-size">
+            Rows per page
+            <select id="pageSize">
+              <option value="10">10</option>
+              <option value="25" selected>25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+          <div class="page-controls">
+            <span id="pageInfo" class="page-info"></span>
+            <button id="prevPage" type="button">Prev</button>
+            <button id="nextPage" type="button">Next</button>
+          </div>
+        </div>
       </section>
     </main>
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=7"></script>
   </body>
 </html>

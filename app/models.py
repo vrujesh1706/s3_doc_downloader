@@ -11,6 +11,7 @@ FileColumn = Literal[
     "cptcs_result_s3_path",
     "cmcs_result_s3_path",
     "filePath",
+    "orignal_path",
 ]
 
 FolderStructure = Literal["facility_wise", "single_folder"]
@@ -23,7 +24,6 @@ class SearchRequest(BaseModel):
     account_numbers: list[str] = Field(default_factory=list)
     encounter_ids: list[str] = Field(default_factory=list)
     selected_files: list[FileColumn] = Field(default_factory=list)
-    limit: int | None = None
 
 
 class DownloadRequest(SearchRequest):
