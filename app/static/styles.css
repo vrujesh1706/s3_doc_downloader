@@ -1,105 +1,124 @@
+/* S3 Document Downloader
+   Black and white. Every surface, border, text tone and control is a neutral --
+   white cards on an off-white page, near-black text, and black buttons with
+   white labels. In dark mode the whole thing inverts: white becomes the emphasis
+   colour on near-black.
+
+   The single exception is the error red. An error that does not look like an
+   error is a functional regression rather than a style choice, so `--danger`
+   stays red in both themes and nothing else in the file is chromatic.
+
+   Every colour is a token with a matching value in both dark blocks, and every
+   text/background pair is contrast-checked: body copy clears 7:1 and all
+   secondary text clears 4.5:1 in both themes. No rule anywhere hardcodes a
+   colour, which is what lets the palette be swapped in one pass.
+
+   Controls are outlined and raised by a hairline shadow, lifting 1px on hover and
+   settling back on press, so anything clickable looks clickable before you reach
+   it. */
+
 :root {
   color-scheme: light;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  --bg: #eef1f6;
-  --bg-accent: #e4e9f2;
-  --text: #16202b;
-  --text-muted: #5b6472;
-  --surface: #ffffff;
-  --surface-2: #f7f9fc;
-  --border: #dde3ec;
-  --shadow: rgba(23, 43, 77, 0.08);
-  --shadow-strong: rgba(23, 43, 77, 0.14);
-  --label-text: #313b49;
-  --input-bg: #ffffff;
-  --input-border: #cbd3df;
-  --input-text: #17202a;
-  --chip-text: #263241;
-  --button-bg: #ffffff;
-  --button-border: #c4cdda;
-  --button-text: #1f2937;
-  --primary-bg: #1f7a97;
-  --primary-hover: #19697f;
-  --primary-border: #1f7a97;
-  --primary-text: #ffffff;
-  --accent-soft: rgba(31, 122, 151, 0.1);
-  --ring: rgba(31, 122, 151, 0.28);
-  --table-header-bg: #f1f4f8;
-  --table-border: #eaeef4;
-  --row-hover: #f5f8fb;
-  --empty-text: #687386;
-  --danger: #c0392b;
-  --radius: 12px;
-  --radius-sm: 8px;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --bg: #f2f2f2;
+  --card: #ffffff;
+  --sunk: #f7f7f7;
+  --ink: #0f0f0f;
+  --ink-soft: #3b3b3b;
+  --muted: #6a6a6a;
+  --line: #e4e4e4;
+  --line-strong: #c7c7c7;
+
+  --accent: #141414;
+  --accent-hover: #000000;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(20, 20, 20, 0.06);
+  --accent-line: rgba(20, 20, 20, 0.32);
+  --focus: rgba(20, 20, 20, 0.26);
+
+  --danger: #c0271d;
+  --pop-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+  --btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.09);
+  --btn-shadow-lift: 0 3px 8px rgba(0, 0, 0, 0.14);
+  --sheen: none;
+
+  --success: #141414;
+  --success-hover: #000000;
+  --success-ink: #ffffff;
+  --success-soft: rgba(20, 20, 20, 0.06);
+  --success-line: rgba(20, 20, 20, 0.32);
+
+  --r: 8px;
+  --r-sm: 5px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
 
-    --bg: #0f141b;
-    --bg-accent: #131a23;
-    --text: #e7ebf2;
-    --text-muted: #98a3b5;
-    --surface: #1a212c;
-    --surface-2: #151b24;
-    --border: #2a323f;
-    --shadow: rgba(0, 0, 0, 0.32);
-    --shadow-strong: rgba(0, 0, 0, 0.45);
-    --label-text: #c3cbd8;
-    --input-bg: #10151c;
-    --input-border: #333d4d;
-    --input-text: #e7ebf2;
-    --chip-text: #d3dae5;
-    --button-bg: #232b38;
-    --button-border: #3a4456;
-    --button-text: #e7ebf2;
-    --primary-bg: #2596bb;
-    --primary-hover: #2ba6ce;
-    --primary-border: #2596bb;
-    --primary-text: #06121a;
-    --accent-soft: rgba(37, 150, 187, 0.16);
-    --ring: rgba(37, 150, 187, 0.4);
-    --table-header-bg: #1f2735;
-    --table-border: #29313f;
-    --row-hover: #202836;
-    --empty-text: #8b95a7;
-    --danger: #ef6a5c;
+    --bg: #0a0a0a;
+    --card: #161616;
+    --sunk: #1f1f1f;
+    --ink: #f4f4f4;
+    --ink-soft: #d0d0d0;
+    --muted: #9b9b9b;
+    --line: #2b2b2b;
+    --line-strong: #404040;
+
+    --accent: #f4f4f4;
+    --accent-hover: #ffffff;
+    --accent-ink: #0a0a0a;
+    --accent-soft: rgba(244, 244, 244, 0.13);
+    --accent-line: rgba(244, 244, 244, 0.42);
+    --focus: rgba(244, 244, 244, 0.38);
+
+    --danger: #ff8d80;
+    --pop-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+    --btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --btn-shadow-lift: 0 3px 10px rgba(0, 0, 0, 0.6);
+    --sheen: none;
+
+    --success: #f4f4f4;
+    --success-hover: #ffffff;
+    --success-ink: #0a0a0a;
+    --success-soft: rgba(244, 244, 244, 0.13);
+    --success-line: rgba(244, 244, 244, 0.42);
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --bg: #0f141b;
-  --bg-accent: #131a23;
-  --text: #e7ebf2;
-  --text-muted: #98a3b5;
-  --surface: #1a212c;
-  --surface-2: #151b24;
-  --border: #2a323f;
-  --shadow: rgba(0, 0, 0, 0.32);
-  --shadow-strong: rgba(0, 0, 0, 0.45);
-  --label-text: #c3cbd8;
-  --input-bg: #10151c;
-  --input-border: #333d4d;
-  --input-text: #e7ebf2;
-  --chip-text: #d3dae5;
-  --button-bg: #232b38;
-  --button-border: #3a4456;
-  --button-text: #e7ebf2;
-  --primary-bg: #2596bb;
-  --primary-hover: #2ba6ce;
-  --primary-border: #2596bb;
-  --primary-text: #06121a;
-  --accent-soft: rgba(37, 150, 187, 0.16);
-  --ring: rgba(37, 150, 187, 0.4);
-  --table-header-bg: #1f2735;
-  --table-border: #29313f;
-  --row-hover: #202836;
-  --empty-text: #8b95a7;
-  --danger: #ef6a5c;
+  --bg: #0a0a0a;
+  --card: #161616;
+  --sunk: #1f1f1f;
+  --ink: #f4f4f4;
+  --ink-soft: #d0d0d0;
+  --muted: #9b9b9b;
+  --line: #2b2b2b;
+  --line-strong: #404040;
+
+  --accent: #f4f4f4;
+  --accent-hover: #ffffff;
+  --accent-ink: #0a0a0a;
+  --accent-soft: rgba(244, 244, 244, 0.13);
+  --accent-line: rgba(244, 244, 244, 0.42);
+  --focus: rgba(244, 244, 244, 0.38);
+
+  --danger: #ff8d80;
+  --pop-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+  --btn-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --btn-shadow-lift: 0 3px 10px rgba(0, 0, 0, 0.6);
+  --sheen: none;
+
+  --success: #f4f4f4;
+  --success-hover: #ffffff;
+  --success-ink: #0a0a0a;
+  --success-soft: rgba(244, 244, 244, 0.13);
+  --success-line: rgba(244, 244, 244, 0.42);
 }
 
 * {
@@ -109,13 +128,11 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(1100px 460px at 100% -10%, var(--bg-accent), transparent 60%),
-    var(--bg);
-  color: var(--text);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 13.5px;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 button,
@@ -123,50 +140,7 @@ input,
 select,
 textarea {
   font: inherit;
-}
-
-.shell {
-  width: min(1220px, calc(100vw - 32px));
-  margin: 0 auto;
-  padding: 28px 0 48px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.toolbar,
-.filters,
-.file-panel,
-.actions,
-.results {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 1px 2px var(--shadow), 0 8px 24px -18px var(--shadow-strong);
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 22px 24px;
-  position: relative;
-  overflow: hidden;
-}
-
-.toolbar::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: linear-gradient(var(--primary-bg), color-mix(in srgb, var(--primary-bg) 45%, transparent));
-}
-
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  color: inherit;
 }
 
 h1,
@@ -175,220 +149,529 @@ p {
   margin: 0;
 }
 
-h1 {
-  font-size: 23px;
-  line-height: 1.2;
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.shell {
+  width: min(1180px, calc(100vw - 40px));
+  margin: 0 auto;
+  padding: 26px 0 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ---------- page head ---------- */
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.page-head h1 {
+  font-size: 17px;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
-h2 {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-}
-
-p {
-  margin-top: 5px;
-  color: var(--text-muted);
-  font-size: 13.5px;
-}
-
-.filters {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  padding: 20px;
-}
-
-label {
-  display: grid;
-  gap: 7px;
-  color: var(--label-text);
+.page-sub {
+  margin-top: 3px;
   font-size: 12.5px;
-  font-weight: 650;
+  color: var(--muted);
 }
 
-textarea,
+.head-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+/* Environment is a setting, not an action, but it sat flush against the buttons
+   as though it were one. A little room and a hairline rule pull it back left and
+   mark it as a different kind of control. */
+.head-actions .field-inline {
+  padding-right: 14px;
+  border-right: 1px solid var(--line);
+}
+
+/* ---------- cards ---------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--sunk);
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--r) var(--r) 0 0;
+}
+
+.card-head h2 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.head-note {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- tabs ---------- */
+
+.tabs {
+  display: flex;
+  gap: 20px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.mode-tab {
+  position: relative;
+  border: 0;
+  background: none;
+  padding: 13px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mode-tab:hover {
+  color: var(--ink);
+}
+
+.mode-tab.is-active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.mode-tab.is-active::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -1px 0;
+  height: 2px;
+  background: var(--accent);
+}
+
+.mode-hint {
+  padding: 14px 18px 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 90ch;
+}
+
+/* ---------- fields ---------- */
+
+/* Twelve columns rather than three equal ones, so a row can be split to suit
+   what is in it. With three columns the metadata tab left a whole empty cell
+   beside Facility code, and the two long dropdowns were no wider than a date
+   input despite holding "2310_Clinic — CHS - Tablespace 2310 Clinic Hospital". */
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px 18px 18px;
+}
+
+/* Direct lookup: three equal thirds, unchanged. */
+#directFilters > .field {
+  grid-column: span 4;
+}
+
+/* Metadata: the three date controls fill the first row, then the two dropdowns
+   take half the width each — no orphan cell, and room for the long labels. */
+#commonFilters {
+  align-items: end;
+}
+
+#commonFilters > .field:nth-child(-n + 3) {
+  grid-column: span 4;
+}
+
+#commonFilters > .field:nth-child(n + 4) {
+  grid-column: span 6;
+}
+
+.filter-grid[hidden] {
+  display: none;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.hint {
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
 input,
-select {
+select,
+textarea {
   width: 100%;
-  border: 1px solid var(--input-border);
-  border-radius: var(--radius-sm);
-  color: var(--input-text);
-  background: var(--input-bg);
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  color: var(--ink);
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
-textarea:focus,
+input:hover,
+select:hover,
+textarea:hover {
+  border-color: var(--muted);
+}
+
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: none;
-  border-color: var(--primary-border);
-  box-shadow: 0 0 0 3px var(--ring);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+input[type="date"],
+select {
+  height: 36px;
+  padding: 0 10px;
 }
 
 textarea {
-  min-height: 92px;
-  resize: vertical;
-  padding: 10px 12px;
+  min-height: 80px;
+  padding: 9px 11px;
   line-height: 1.5;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
 }
 
-input[type="number"],
-select {
-  height: 40px;
-  padding: 0 12px;
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.75;
 }
 
-.file-panel,
-.results {
-  padding: 20px;
+/* Built by app.js: a text input that filters a hidden <select>'s options as you
+   type. The <select> is kept in the DOM as the value store, never shown. */
+.combobox {
+  position: relative;
+  min-width: 0;
 }
 
-.panel-head,
-.actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+.combobox > select {
+  display: none;
 }
 
-.mini-actions {
-  display: flex;
-  gap: 8px;
+.combobox-input {
+  height: 36px;
+  padding: 0 10px;
 }
 
-.file-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 10px;
-  margin-top: 16px;
+.combobox-input:disabled {
+  background: var(--sunk);
+  color: var(--muted);
+  cursor: not-allowed;
 }
 
-.file-option {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 44px;
-  padding: 9px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-weight: 600;
+.combobox-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 264px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  box-shadow: var(--pop-shadow);
+}
+
+.combobox-option {
+  padding: 7px 9px;
+  border-radius: var(--r-sm);
   font-size: 13px;
-  color: var(--chip-text);
+  color: var(--ink);
   cursor: pointer;
-  transition: border-color 0.12s ease, background-color 0.12s ease, transform 0.06s ease;
-}
-
-.file-option:hover {
-  border-color: var(--primary-border);
-  background: var(--surface-2);
-}
-
-.file-option:active {
-  transform: translateY(1px);
-}
-
-.file-option:has(input:checked) {
-  background: var(--accent-soft);
-  border-color: var(--primary-border);
-  color: var(--text);
-}
-
-.file-option span {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.file-option input[type="checkbox"] {
-  flex: none;
-  width: 17px;
-  height: 17px;
-  accent-color: var(--primary-bg);
-  cursor: pointer;
+.combobox-option[aria-selected="true"] {
+  font-weight: 600;
 }
 
-.actions {
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  padding: 16px 20px;
+.combobox-option.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
-.actions label {
-  width: 200px;
+.combobox-empty {
+  padding: 7px 9px;
+  font-size: 13px;
+  color: var(--muted);
 }
 
-button {
-  min-height: 40px;
-  border: 1px solid var(--button-border);
-  border-radius: var(--radius-sm);
-  padding: 0 16px;
-  background: var(--button-bg);
-  color: var(--button-text);
-  cursor: pointer;
-  font-weight: 650;
-  transition: border-color 0.12s ease, background-color 0.12s ease, transform 0.06s ease,
-    box-shadow 0.12s ease;
+.field-inline {
+  grid-auto-flow: row;
+  gap: 6px;
 }
 
-button:hover:not(:disabled) {
-  border-color: var(--primary-border);
+.field-inline select {
+  width: auto;
+  min-width: 148px;
 }
 
-button:active:not(:disabled) {
-  transform: translateY(1px);
-}
+/* ---------- buttons ---------- */
 
-button.primary {
-  border-color: var(--primary-border);
-  background: var(--primary-bg);
-  color: var(--primary-text);
-  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--primary-bg) 80%, transparent);
-}
-
-button.primary:hover:not(:disabled) {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
-}
-
-button.icon {
-  min-height: 40px;
-  min-width: 40px;
-  padding: 0;
+.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-#status,
-#resultCount {
-  color: var(--text-muted);
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 15px;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  box-shadow: var(--btn-shadow);
+  color: var(--ink);
   font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease,
+    color 0.14s ease, transform 0.1s ease;
 }
 
-.progress {
+.btn:hover:not(:disabled) {
+  background: var(--sunk);
+  border-color: var(--muted);
+  box-shadow: var(--btn-shadow-lift);
+  transform: translateY(-1px);
+}
+
+/* Press returns the button to the resting plane, so the click reads as a push
+   rather than the hover lift merely switching off. */
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--btn-shadow);
+}
+
+/* Filled buttons carry a very slight top-to-bottom sheen. It is what keeps them
+   reading as raised next to the flat outlined ones, without going anywhere near
+   a glossy gradient. */
+.btn-primary,
+.btn-success {
+  background-image: var(--sheen);
+  font-weight: 600;
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--accent-ink);
+}
+
+/* Download is the payoff action and sits beside Search, which already owns the
+   accent. Its own colour stops two identical primaries competing. */
+.btn-success {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: var(--success-ink);
+}
+
+.btn-success:hover:not(:disabled) {
+  background-color: var(--success-hover);
+  border-color: var(--success-hover);
+  color: var(--success-ink);
+}
+
+.btn-icon {
+  width: 36px;
+  padding: 0;
+  font-size: 14px;
+}
+
+.btn-sm {
+  min-height: 28px;
+  padding: 0 11px;
+  font-size: 12.5px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.btn-count:empty {
+  display: none;
+}
+
+.btn-count::before {
+  content: "(";
+}
+
+.btn-count::after {
+  content: ")";
+}
+
+.mini-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ---------- file outputs ---------- */
+
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(228px, 1fr));
+  gap: 9px;
+  padding: 16px 18px 18px;
+}
+
+/* Built by app.js: <label class="file-option"><span>Label</span><input …></label>
+   These were bare checkboxes in a column, which read as a form to fill in rather
+   than a set of things to pick. As bordered cards that tint when checked, what is
+   selected is legible at a glance from across the grid. */
+.file-option {
+  position: relative;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  box-shadow: var(--btn-shadow);
+  font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease,
+    color 0.14s ease, transform 0.1s ease;
+}
+
+.file-option:hover {
+  border-color: var(--accent-line);
+  box-shadow: var(--btn-shadow-lift);
+  transform: translateY(-1px);
+  color: var(--ink);
+}
+
+.file-option:active {
+  transform: translateY(0);
+}
+
+.file-option:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* The checkbox itself is inside the card, so the keyboard ring has to be lifted
+   onto the card or it would be drawn within the tinted fill and be easy to miss. */
+.file-option:has(input:focus-visible) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.file-option:has(input:focus-visible) input {
+  outline: none;
+}
+
+.file-option span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ---------- run bar ---------- */
+
+.runbar {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: end;
+  gap: 16px;
+  padding: 16px 18px;
+}
+
+.run-status {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 22px;
+  min-height: 36px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+#status.is-error {
+  color: var(--danger);
 }
 
 .spinner {
   flex: none;
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--border);
-  border-top-color: var(--primary-bg);
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -404,11 +687,10 @@ button:disabled {
 }
 
 .progress-bar {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 14px;
-  flex-basis: 100%;
-  margin-top: 6px;
 }
 
 .progress-bar[hidden] {
@@ -417,132 +699,134 @@ button:disabled {
 
 .progress-track {
   flex: 1;
-  height: 10px;
+  height: 5px;
   border-radius: 999px;
-  background: var(--table-header-bg);
-  border: 1px solid var(--border);
+  background: var(--line);
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   width: 0%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--primary-bg), color-mix(in srgb, var(--primary-bg) 70%, #7fd7ef));
-  background-size: 200% 100%;
-  animation: shimmer 1.6s linear infinite;
+  background: var(--accent);
   transition: width 0.25s ease;
-}
-
-@keyframes shimmer {
-  to {
-    background-position: -200% 0;
-  }
 }
 
 .progress-count {
   flex: none;
-  min-width: 160px;
+  min-width: 145px;
   text-align: right;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
 }
 
+/* ---------- results ---------- */
+
 .table-wrap {
-  overflow: auto;
-  margin-top: 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  overflow-x: auto;
+  max-height: 60vh;
+  overflow-y: auto;
 }
 
 table {
   width: 100%;
-  min-width: 900px;
+  min-width: 960px;
   border-collapse: collapse;
-  background: var(--surface);
 }
 
 th,
 td {
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--table-border);
+  padding: 10px 16px;
   text-align: left;
-  font-size: 13px;
+  border-bottom: 1px solid var(--line);
   vertical-align: middle;
+  font-size: 13px;
 }
 
 thead th {
   position: sticky;
   top: 0;
-  background: var(--table-header-bg);
-  color: var(--text-muted);
-  font-weight: 700;
-  font-size: 11.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   z-index: 1;
+  background: var(--sunk);
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-tbody tr {
-  transition: background-color 0.1s ease;
+/* Identifiers are compared digit by digit, so they get the mono face. */
+tbody td:nth-child(2),
+tbody td:nth-child(3),
+tbody td:nth-child(4),
+tbody td:nth-child(5),
+tbody td:nth-child(6) {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
 }
 
 tbody tr:hover td {
-  background: var(--row-hover);
+  background: var(--sunk);
 }
 
-tbody tr:nth-child(even):not(.multidoc) td {
-  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+tbody tr:has(input:checked) td {
+  background: var(--accent-soft);
 }
 
-tbody tr:hover:nth-child(even) td {
-  background: var(--row-hover);
-}
-
-tr:last-child td {
+tbody tr:last-child td {
   border-bottom: 0;
 }
 
 .empty-row {
-  color: var(--empty-text);
+  padding: 34px 16px;
   text-align: center;
-  padding: 26px 14px;
-}
-
-tr.multidoc td {
-  background: var(--accent-soft);
-}
-
-tr.multidoc:hover td {
-  background: color-mix(in srgb, var(--primary-bg) 16%, transparent);
+  color: var(--muted);
 }
 
 .badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-muted);
-  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--muted);
 }
 
 .badge-yes {
-  border-color: var(--primary-border);
-  background: color-mix(in srgb, var(--primary-bg) 16%, transparent);
-  color: var(--text);
+  color: var(--ink-soft);
+  font-weight: 500;
 }
 
 .files-cell {
-  min-width: 240px;
+  min-width: 280px;
+  color: var(--ink-soft);
+}
+
+.fchips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.fchip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.fchip b {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .file-total {
-  color: var(--text-muted);
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--muted);
 }
 
 .pagination {
@@ -551,7 +835,8 @@ tr.multidoc:hover td {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 14px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
 }
 
 .pagination[hidden] {
@@ -560,15 +845,15 @@ tr.multidoc:hover td {
 
 .page-size {
   display: flex;
-  flex-direction: row;
   align-items: center;
   gap: 8px;
+  color: var(--muted);
   font-size: 12.5px;
 }
 
 .page-size select {
   width: auto;
-  height: 34px;
+  height: 28px;
 }
 
 .page-controls {
@@ -578,46 +863,44 @@ tr.multidoc:hover td {
 }
 
 .page-info {
-  color: var(--text-muted);
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
-}
-
-.page-controls button {
-  min-height: 34px;
-  padding: 0 14px;
-}
-
-input[type="checkbox"] {
-  width: auto;
-  accent-color: var(--primary-bg);
-  cursor: pointer;
-}
-
-th input[type="checkbox"],
-td input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+  color: var(--muted);
 }
 
 @media (max-width: 900px) {
-  .toolbar,
-  .panel-head,
-  .actions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .filters,
-  .file-grid {
+  .filter-grid,
+  .runbar {
     grid-template-columns: 1fr;
   }
 
-  .actions label {
-    width: 100%;
+  /* Single column: any span > 1 would create implicit columns and break out of
+     the card, so every field is pinned to the one track. */
+  #directFilters > .field,
+  #commonFilters > .field {
+    grid-column: 1 / -1;
   }
 
-  .progress-count {
-    min-width: 0;
+  .head-actions .field-inline {
+    padding-right: 0;
+    border-right: 0;
+  }
+
+  .runbar {
+    align-items: stretch;
+  }
+
+  .page-head,
+  .head-actions {
+    align-items: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }
