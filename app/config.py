@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
+from sqlalchemy.engine import URL
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +27,31 @@ def _int_env(name: str, default: int) -> int:
 
 
 @dataclass(frozen=True)
+class CommonDB:
+    """commonDb, which holds `overall_data` -- the metadata table used to find
+    encounters. It is a single company server shared by all environments, so
+    unlike the per-client databases it has no production/staging split."""
+
+    user: str
+    password: str
+    host: str
+    port: int
+    db_name: str
+
+    def database_url(self) -> URL:
+        # Built with URL.create rather than an f-string so that credentials
+        # containing URL-significant characters (@, :, /, #) are escaped.
+        return URL.create(
+            "mysql+pymysql",
+            username=self.user,
+            password=self.password,
+            host=self.host,
+            port=self.port,
+            database=self.db_name,
+        )
+
+
+@dataclass(frozen=True)
 class DBEnvironment:
     name: str
     db_user: str
@@ -35,13 +61,21 @@ class DBEnvironment:
     db_ssl: bool
     s3_bucket: str
 
-    def database_url(self, db_name: str = "") -> str:
-        return f"mysql+pymysql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{db_name}"
+    def database_url(self, db_name: str = "") -> URL:
+        return URL.create(
+            "mysql+pymysql",
+            username=self.db_user,
+            password=self.db_password,
+            host=self.db_host,
+            port=self.db_port,
+            database=db_name,
+        )
 
 
 @dataclass(frozen=True)
 class Settings:
     environments: dict[str, DBEnvironment]
+    common_db: CommonDB
     max_search_rows: int
     max_download_files: int
 
@@ -81,11 +115,27 @@ def get_settings() -> Settings:
             if not value:
                 missing.append(f"{prefix}_{field}")
 
+    common_db = CommonDB(
+        user=os.getenv("COMMON_DB_USER", ""),
+        password=os.getenv("COMMON_DB_PASSWORD", ""),
+        host=os.getenv("COMMON_DB_HOST", ""),
+        port=_int_env("COMMON_DB_PORT", 3306),
+        db_name=os.getenv("COMMON_DB_NAME", ""),
+    )
+    for field, value in {
+        "COMMON_DB_USER": common_db.user,
+        "COMMON_DB_HOST": common_db.host,
+        "COMMON_DB_NAME": common_db.db_name,
+    }.items():
+        if not value:
+            missing.append(field)
+
     if missing:
         raise RuntimeError(f"Missing required environment values in .env: {', '.join(missing)}")
 
     return Settings(
         environments=environments,
+        common_db=common_db,
         max_search_rows=_int_env("MAX_SEARCH_ROWS", 5000),
         max_download_files=_int_env("MAX_DOWNLOAD_FILES", 2500),
     )

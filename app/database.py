@@ -21,6 +21,13 @@ def get_engine(environment: str) -> Engine:
     return create_engine(env.database_url(), connect_args=_connect_args(env), pool_pre_ping=True)
 
 
+@lru_cache(maxsize=1)
+def get_common_engine() -> Engine:
+    """Engine for commonDb, the metadata source behind `overall_data`."""
+    common = get_settings().common_db
+    return create_engine(common.database_url(), pool_pre_ping=True)
+
+
 @lru_cache(maxsize=64)
 def get_client_engine(environment: str, client_code: str) -> Engine:
     env = get_settings().environment(environment)
