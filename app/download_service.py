@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import posixpath
 import re
 import zipfile
@@ -14,6 +15,8 @@ import boto3
 from .config import get_settings
 from .models import FolderStructure
 from .query_service import selected_file_columns
+
+logger = logging.getLogger(__name__)
 
 # Number of S3 objects fetched concurrently while building the ZIP. The network
 # is the bottleneck, so fetching in parallel is much faster than one-at-a-time;
@@ -45,20 +48,38 @@ def is_blank(value: Any) -> bool:
     return text == "" or text.lower() in {"nan", "none", "null"}
 
 
+_S3_URI = re.compile(r"^s3://[^/]+/")
+
+
 def clean_s3_key(value: Any, bucket: str) -> str:
-    key = str(value).strip()
-    key = key.replace(f"s3://{bucket}/", "")
-    key = key.replace("ezdi-production-bucket/", "")
-    key = key.replace("ezdi-staging-bucket/", "")
+    """Normalise a stored path into a plain S3 key.
+
+    Values are normally bare keys, but a few are stored as a full `s3://bucket/…`
+    URI or with the bucket name in front; strip whichever wrapper is present so
+    that the prefixing below sees the real key.
+    """
+    key = _S3_URI.sub("", str(value).strip())
+    for prefix in (f"{bucket}/", "ezdi-production-bucket/", "ezdi-staging-bucket/"):
+        if key.startswith(prefix):
+            key = key[len(prefix) :]
+            break
     return key.lstrip("/")
 
 
-def candidate_s3_keys(column: str, value: Any, bucket: str) -> list[str]:
+# `document_mst.path` and `document_mst.orignal_path` are stored *relative to*
+# the `ezcapc/` root, while every processing column (`*_s3_path`) already carries
+# it. So the two document paths must be prefixed or the object is simply not
+# there -- this is the `'ezcapc/' + orignal_path` the download notebooks do by
+# hand before fetching. Rows that already include the prefix are left alone.
+EZCAPC_PREFIX = "ezcapc/"
+DOCUMENT_PATH_COLUMNS = {"filePath", "orignal_path"}
+
+
+def s3_key(column: str, value: Any, bucket: str) -> str:
     key = clean_s3_key(value, bucket)
-    keys = [key]
-    if column in {"filePath", "orignal_path"} and key and not key.startswith("ezcapc/"):
-        keys.append(f"ezcapc/{key}")
-    return keys
+    if column in DOCUMENT_PATH_COLUMNS and key and not key.startswith(EZCAPC_PREFIX):
+        return f"{EZCAPC_PREFIX}{key}"
+    return key
 
 
 def safe_part(value: Any, fallback: str) -> str:
@@ -112,7 +133,6 @@ class DownloadItem:
     encounter: str
     folder: str
     key: str
-    keys: list[str]
     column: str
 
 
@@ -139,14 +159,13 @@ def collect_download_items(
         for column in file_columns:
             if is_blank(row.get(column)):
                 continue
-            keys = candidate_s3_keys(column, row[column], bucket)
-            key = keys[0]
+            key = s3_key(column, row[column], bucket)
             dedup_id = (folder, key)
             if dedup_id in seen_keys:
                 continue
             seen_keys.add(dedup_id)
             items.append(
-                DownloadItem(encounter=encounter, folder=folder, key=key, keys=keys, column=column)
+                DownloadItem(encounter=encounter, folder=folder, key=key, column=column)
             )
     return items
 
@@ -154,7 +173,7 @@ def collect_download_items(
 def download_totals(
     rows: list[dict[str, Any]],
     selected_files: list[str],
-    folder_structure: FolderStructure = "facility_wise",
+    folder_structure: FolderStructure = "single_folder",
     environment: str = "production",
 ) -> tuple[int, int]:
     """Return (encounters_total, files_total) for the pending download."""
@@ -169,22 +188,22 @@ def download_totals(
 def _fetch_object(
     s3: Any, bucket: str, item: DownloadItem, zip_name: str, original_name: str
 ) -> tuple[DownloadItem, str, str, bytes | None, Exception | None]:
-    """Fetch one S3 object's bytes, trying each candidate key. Runs on a worker
-    thread, so it only does network I/O and never touches the shared ZIP."""
-    last_error: Exception | None = None
-    for candidate_key in item.keys:
-        try:
-            obj = s3.get_object(Bucket=bucket, Key=candidate_key)
-            return item, zip_name, original_name, obj["Body"].read(), None
-        except Exception as exc:  # noqa: BLE001 - try the next candidate key
-            last_error = exc
-    return item, zip_name, original_name, None, last_error
+    """Fetch one S3 object's bytes. Runs on a worker thread, so it only does
+    network I/O and never touches the shared ZIP."""
+    try:
+        obj = s3.get_object(Bucket=bucket, Key=item.key)
+        return item, zip_name, original_name, obj["Body"].read(), None
+    except Exception as exc:  # noqa: BLE001 - reported per file, never fatal
+        # Logged as well as written into the ZIP, so a systematically wrong key
+        # for one file type is visible in the server log.
+        logger.warning("S3 fetch failed (%s) s3://%s/%s: %s", item.column, bucket, item.key, exc)
+        return item, zip_name, original_name, None, exc
 
 
 def zip_documents(
     rows: list[dict[str, Any]],
     selected_files: list[str],
-    folder_structure: FolderStructure = "facility_wise",
+    folder_structure: FolderStructure = "single_folder",
     environment: str = "production",
     progress_callback: Callable[[ZipProgress], None] | None = None,
 ) -> ZipResult:
@@ -257,7 +276,7 @@ def zip_documents(
                         failed_name = unique_zip_name(
                             f"{item.folder}/FAILED_{original_name}.txt", used_names
                         )
-                        archive.writestr(failed_name, f"{item.key}\n{error}\n")
+                        archive.writestr(failed_name, f"{item.column}\n{item.key}\n{error}\n")
                     mark_item_done(item)
                     report()
 
