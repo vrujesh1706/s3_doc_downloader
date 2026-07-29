@@ -80,6 +80,8 @@ def normalize_values(values: list[str]) -> list[str]:
 
 
 def selected_file_columns(selected_files: list[FileColumn]) -> list[str]:
+    # The API rejects an empty selection (`_require_file_types` in main.py), so
+    # the fall-back to every column is only a floor for direct callers.
     columns = [column for column in selected_files if column in FILE_COLUMNS]
     return columns or list(FILE_COLUMNS)
 
