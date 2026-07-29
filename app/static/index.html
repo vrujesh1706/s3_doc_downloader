@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>S3 Document Downloader</title>
-    <link rel="stylesheet" href="/static/styles.css?v=7" />
+    <link rel="stylesheet" href="/static/styles.css?v=26" />
     <script>
       (function () {
         var saved = localStorage.getItem("theme");
@@ -16,62 +16,115 @@
   </head>
   <body>
     <main class="shell">
-      <section class="toolbar">
+      <header class="page-head">
         <div>
           <h1>S3 Document Downloader</h1>
-          <p>Search encounters and download selected document outputs as a ZIP.</p>
+          <p class="page-sub">Find encounters, download their S3 outputs as a ZIP.</p>
         </div>
-        <div class="toolbar-actions">
-          <button id="themeToggleBtn" class="icon" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
-          <button id="downloadBtn" class="primary" disabled>Download ZIP</button>
+        <div class="head-actions">
+          <label class="field field-inline" for="environment">
+            <span class="field-label">Environment</span>
+            <select id="environment">
+              <option value="production" selected>Production</option>
+              <option value="staging">Staging</option>
+            </select>
+          </label>
+          <button id="themeToggleBtn" class="btn btn-icon" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+          <button id="downloadBtn" class="btn btn-success" type="button" disabled>
+            Download ZIP <span id="downloadCount" class="btn-count"></span>
+          </button>
+        </div>
+      </header>
+
+      <section class="card">
+        <div class="tabs" id="modeTabs" role="tablist">
+          <button type="button" class="mode-tab is-active" data-mode="direct" role="tab" aria-selected="true">
+            Direct client lookup
+          </button>
+          <button type="button" class="mode-tab" data-mode="common" role="tab" aria-selected="false">
+            Find by metadata
+          </button>
+        </div>
+
+        <p class="mode-hint" id="modeHint"></p>
+
+        <div class="filter-grid" id="directFilters">
+          <label class="field">
+            <span class="field-label">Client</span>
+            <select id="client">
+              <option value="">Select a client…</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">Account numbers</span>
+            <textarea id="account_numbers" placeholder="9619150-720680, 4599278-449254"></textarea>
+          </label>
+          <label class="field">
+            <span class="field-label">Encounter IDs <span class="hint">combined with accounts using AND</span></span>
+            <textarea id="encounter_ids" placeholder="37750838, 37738090"></textarea>
+          </label>
+        </div>
+
+        <div class="filter-grid" id="commonFilters" hidden>
+          <label class="field">
+            <span class="field-label">Service date range <span class="hint">ignored if From/To is set</span></span>
+            <select id="date_range">
+              <option value="any" selected>Any date</option>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="last_7_days">Last 7 days</option>
+              <option value="last_30_days">Last 30 days</option>
+              <option value="this_week">This week</option>
+              <option value="last_week">Last week</option>
+              <option value="this_month">This month</option>
+              <option value="last_month">Last month</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">From <span class="hint">overrides the service date range; needs To as well</span></span>
+            <input id="date_from" type="date" />
+          </label>
+          <label class="field">
+            <span class="field-label">To <span class="hint">overrides the service date range; needs From as well</span></span>
+            <input id="date_to" type="date" />
+          </label>
+          <label class="field">
+            <span class="field-label">Client code <span class="hint">required — pick “All clients” for every one</span></span>
+            <select id="client_codes">
+              <option value="">Select a client…</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">Facility code <span class="hint">required — pick “All facilities” for every one</span></span>
+            <select id="facility_codes" disabled>
+              <option value="">Select a client first</option>
+            </select>
+          </label>
         </div>
       </section>
 
-      <section class="filters">
-        <label>
-          Environment
-          <select id="environment">
-            <option value="production" selected>Production</option>
-            <option value="staging">Staging</option>
-          </select>
-        </label>
-        <label>
-          Client
-          <select id="client">
-            <option value="">Select a client...</option>
-          </select>
-        </label>
-        <label>
-          Account numbers
-          <textarea id="account_numbers" placeholder="9619150-720680, 4599278-449254"></textarea>
-        </label>
-        <label>
-          Encounter IDs
-          <textarea id="encounter_ids" placeholder="37750838, 37738090"></textarea>
-        </label>
-      </section>
-
-      <section class="file-panel">
-        <div class="panel-head">
+      <section class="card">
+        <div class="card-head">
           <h2>File outputs</h2>
+          <span class="head-note">Pick at least one — nothing is included by default</span>
           <div class="mini-actions">
-            <button id="selectAllBtn" type="button">All</button>
-            <button id="clearFilesBtn" type="button">Clear</button>
+            <button id="selectAllBtn" class="btn btn-sm" type="button">All</button>
+            <button id="clearFilesBtn" class="btn btn-sm" type="button">Clear</button>
           </div>
         </div>
         <div id="fileTypes" class="file-grid"></div>
       </section>
 
-      <section class="actions">
-        <label>
-          Folder structure
+      <section class="card runbar">
+        <label class="field">
+          <span class="field-label">Folder structure</span>
           <select id="folder_structure">
-            <option value="facility_wise" selected>Facility wise</option>
-            <option value="single_folder">One folder</option>
+            <option value="single_folder" selected>One folder</option>
+            <option value="facility_wise">Facility wise</option>
           </select>
         </label>
-        <button id="searchBtn" class="primary" type="button">Search</button>
-        <div class="progress" aria-live="polite">
+        <button id="searchBtn" class="btn btn-primary" type="button">Search</button>
+        <div class="run-status" aria-live="polite">
           <span id="spinner" class="spinner" hidden></span>
           <span id="status" role="status"></span>
         </div>
@@ -81,16 +134,16 @@
         </div>
       </section>
 
-      <section class="results">
-        <div class="panel-head">
+      <section class="card">
+        <div class="card-head">
           <h2>Results</h2>
-          <span id="resultCount">No search yet</span>
+          <span id="resultCount" class="head-note">No search yet</span>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th><input id="toggleRows" type="checkbox" /></th>
+                <th><input id="toggleRows" type="checkbox" aria-label="Select all rows" /></th>
                 <th>Account</th>
                 <th>Encounter</th>
                 <th>Client</th>
@@ -105,7 +158,7 @@
         </div>
         <div id="pagination" class="pagination" hidden>
           <label class="page-size">
-            Rows per page
+            <span>Rows per page</span>
             <select id="pageSize">
               <option value="10">10</option>
               <option value="25" selected>25</option>
@@ -115,12 +168,12 @@
           </label>
           <div class="page-controls">
             <span id="pageInfo" class="page-info"></span>
-            <button id="prevPage" type="button">Prev</button>
-            <button id="nextPage" type="button">Next</button>
+            <button id="prevPage" class="btn btn-sm" type="button">Prev</button>
+            <button id="nextPage" class="btn btn-sm" type="button">Next</button>
           </div>
         </div>
       </section>
     </main>
-    <script src="/static/app.js?v=7"></script>
+    <script src="/static/app.js?v=26"></script>
   </body>
 </html>
