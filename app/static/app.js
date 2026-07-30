@@ -77,15 +77,15 @@ function hideProgress() {
   progressCountEl.textContent = "";
 }
 
-// Used only for the two identifier lists, so a token has to contain a digit to
-// be one. Without that check, stripping letters out of pasted junk can leave a
-// bare "--" behind, which would go to the API as an id and quietly return no
-// rows instead of being ignored.
+// Used only for the two identifier lists, so a token needs at least one letter or
+// digit to be one. Without that check, filtering pasted junk can leave a bare
+// "--" behind, which would go to the API as an id and quietly match no rows
+// instead of being ignored.
 function splitValues(value) {
   return value
     .split(/[\s,]+/)
     .map((item) => item.trim())
-    .filter((item) => /[0-9]/.test(item));
+    .filter((item) => /[0-9a-z]/i.test(item));
 }
 
 function selectedFiles() {
@@ -141,27 +141,35 @@ function metadataFilters() {
   return filters;
 }
 
-// Account numbers and encounter IDs are numeric identifiers, so anything that is
-// not a digit is dropped as it is typed or pasted.
+// The two boxes do not accept the same characters, because the two columns are
+// not the same type.
 //
-// Commas and hyphens stay because they are part of the format: account numbers
-// look like 9619150-720680, and lists are comma separated. Whitespace stays
-// because `splitValues` treats it as a separator -- stripping it would silently
-// weld a newline-separated paste out of a spreadsheet into one long, wrong id
-// rather than rejecting anything.
-const ID_DISALLOWED = /[^0-9,\-\s]/g;
-const ID_ALLOWED = /[0-9,\-\s]/g;
+// `account_number` is varchar(63) and genuinely holds letters: real values in
+// the last three months include V00861282096, SF0001341610, H83997379 and
+// 6383631426-archive-20260513. Nothing outside letters, digits and hyphens
+// appears anywhere in that window, so those are what is allowed.
+//
+// `encounter_id` is an int in commonDb and a bigint in webdb, so a letter can
+// never be part of one and is dropped.
+//
+// Both keep commas and whitespace, which `splitValues` treats as separators.
+// Stripping whitespace would weld a newline-separated paste out of a spreadsheet
+// into one long, wrong id rather than rejecting anything.
+const FIELD_FILTERS = [
+  { el: () => accountNumbersEl, disallowed: /[^0-9A-Za-z,\-\s]/g, allowed: /[0-9A-Za-z,\-\s]/g },
+  { el: () => encounterIdsEl, disallowed: /[^0-9,\s]/g, allowed: /[0-9,\s]/g },
+];
 
-function sanitizeIdList(el) {
+function sanitizeIdList(el, disallowed, allowed) {
   const before = el.value;
-  const cleaned = before.replace(ID_DISALLOWED, "");
+  const cleaned = before.replace(disallowed, "");
   if (cleaned === before) return;
 
   // Assigning .value drops the caret to the end, which makes editing the middle
   // of a long pasted list impossible. Put it back where it was, less however many
   // characters were removed ahead of it.
   const caret = el.selectionStart;
-  const removedBefore = before.slice(0, caret).replace(ID_ALLOWED, "").length;
+  const removedBefore = before.slice(0, caret).replace(allowed, "").length;
   el.value = cleaned;
   const position = caret - removedBefore;
   el.setSelectionRange(position, position);
@@ -930,9 +938,9 @@ environmentEl.addEventListener("change", () => {
   loadClients().catch((error) => setStatus(error.message, true));
 });
 
-for (const el of [accountNumbersEl, encounterIdsEl]) {
-  el.addEventListener("input", () => {
-    sanitizeIdList(el);
+for (const { el, disallowed, allowed } of FIELD_FILTERS) {
+  el().addEventListener("input", () => {
+    sanitizeIdList(el(), disallowed, allowed);
     syncDirectFilters();
   });
 }

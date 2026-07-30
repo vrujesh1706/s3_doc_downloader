@@ -200,6 +200,24 @@ encounter ID (comma, space, or newline separated). `POST /api/search`.
 
 Select one or more output file types, search, then download the matching files as a ZIP.
 
+Each box filters what you type or paste, and the two differ because the columns
+do. `account_number` is a `varchar(63)` that genuinely holds letters — real
+values in the retention window include `V00861282096`, `SF0001341610`,
+`H83997379` and `6383631426-archive-20260513` — so it takes letters, digits and
+hyphens. `encounter_id` is an `int` in commonDb and a `bigint` in webdb, so a
+letter can never be part of one and is dropped.
+
+| Box | Accepts | Rejects |
+| --- | --- | --- |
+| Account numbers | letters, digits, `-` | everything else (`.` `/` `;` `'` `"` …) |
+| Encounter IDs | digits | letters and everything else |
+
+Both also keep commas and whitespace, which separate one value from the next.
+Whitespace has to be kept: stripping it would weld a newline-separated paste out
+of a spreadsheet into one long, wrong id instead of rejecting anything. A value
+needs at least one letter or digit to count, so a stray `--` is ignored rather
+than searched for.
+
 **Account numbers and encounter IDs are alternatives — fill one box or the
 other.** Typing in either one disables the other, and `POST /api/search` rejects
 a request carrying both with a 400.
