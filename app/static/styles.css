@@ -403,6 +403,20 @@ textarea::placeholder {
   cursor: not-allowed;
 }
 
+/* Direct lookup is either/or: filling one of the two boxes disables the other.
+   Dimming the whole field, label included, is what makes it read as a choice
+   between the two rather than a control that has broken. */
+textarea:disabled {
+  background: var(--sunk);
+  color: var(--muted);
+  cursor: not-allowed;
+  resize: none;
+}
+
+.field.is-disabled > .field-label {
+  opacity: 0.5;
+}
+
 .combobox-list {
   position: absolute;
   z-index: 30;

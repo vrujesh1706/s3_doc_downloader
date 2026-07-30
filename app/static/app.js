@@ -26,13 +26,16 @@ const directFiltersEl = document.querySelector("#directFilters");
 const clientCodesEl = document.querySelector("#client_codes");
 const facilityCodesEl = document.querySelector("#facility_codes");
 const downloadCountEl = document.querySelector("#downloadCount");
+const accountNumbersEl = document.querySelector("#account_numbers");
+const encounterIdsEl = document.querySelector("#encounter_ids");
 
 // One scannable line per tab. The full rules -- how the filters combine, what an
 // empty result means, why a wide search is unreliable -- live in the README
 // rather than on screen above every search.
 const MODE_HINTS = {
   common: "Searches every client in commonDb, then reads the file paths from the selected environment.",
-  direct: "Searches one client's database directly, by account number or encounter ID.",
+  direct:
+    "Searches one client's database directly, by account number or encounter ID — one or the other, not both.",
 };
 
 // "common" searches commonDb metadata; "direct" is the original per-client lookup.
@@ -104,8 +107,8 @@ function payload() {
   return {
     environment: environmentEl.value,
     client: clientEl.value,
-    account_numbers: splitValues(document.querySelector("#account_numbers").value),
-    encounter_ids: splitValues(document.querySelector("#encounter_ids").value),
+    account_numbers: splitValues(accountNumbersEl.value),
+    encounter_ids: splitValues(encounterIdsEl.value),
     selected_files: selectedFiles(),
   };
 }
@@ -134,6 +137,21 @@ function metadataFilters() {
   return filters;
 }
 
+// Direct lookup takes accounts or encounters, never both. They used to combine
+// with AND, so pasting a list of accounts beside a list of unrelated encounter
+// ids matched nothing at all -- the two lists have to describe the same
+// encounters to return anything. Whichever box is used first now disables the
+// other, so the empty-result case cannot be reached.
+function syncDirectFilters() {
+  const usingAccounts = accountNumbersEl.value.trim() !== "";
+  const usingEncounters = encounterIdsEl.value.trim() !== "";
+  accountNumbersEl.disabled = usingEncounters;
+  encounterIdsEl.disabled = usingAccounts;
+  // The label dims with its field, so the pair reads as one either/or choice.
+  accountNumbersEl.closest(".field").classList.toggle("is-disabled", usingEncounters);
+  encounterIdsEl.closest(".field").classList.toggle("is-disabled", usingAccounts);
+}
+
 function metadataPayload() {
   return {
     environment: environmentEl.value,
@@ -159,6 +177,7 @@ function setMode(mode) {
     tab.classList.toggle("is-active", isActive);
     tab.setAttribute("aria-selected", String(isActive));
   }
+  syncDirectFilters();
   renderRows([]);
   setStatus("");
   if (mode === "common") {
@@ -688,14 +707,6 @@ async function search() {
           : "commonDb matched 0 encounters. Try widening the date range or clearing a filter.";
         warn = true;
       }
-    } else if (!encounters && body.account_numbers.length && body.encounter_ids.length) {
-      // The two boxes are ANDed, so an account list paired with an unrelated
-      // encounter list matches nothing at all. Without this the only feedback is
-      // a flat "0 encounter(s)", which reads as "this client has no such data".
-      message =
-        "No encounter matches both filters. Account numbers and encounter IDs are combined with AND, " +
-        "so an encounter has to belong to one of those accounts — clear one box to search the other on its own.";
-      warn = true;
     }
     setStatus(message, warn);
   } catch (error) {
@@ -888,6 +899,10 @@ downloadBtn.addEventListener("click", downloadZip);
 environmentEl.addEventListener("change", () => {
   loadClients().catch((error) => setStatus(error.message, true));
 });
+
+for (const el of [accountNumbersEl, encounterIdsEl]) {
+  el.addEventListener("input", syncDirectFilters);
+}
 
 clientCodesEl.addEventListener("change", () => {
   loadFacilities().catch((error) => setStatus(error.message, true));

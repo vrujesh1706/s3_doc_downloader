@@ -39,7 +39,8 @@ down; the UI carries only a one-line hint per tab, so this is the reference.
 
 | # | Rule | Why it matters |
 | - | ---- | -------------- |
-| 1 | **Every filter is `AND`.** Filling more boxes always narrows, never widens. | On direct lookup, an account list plus an unrelated encounter list matches **nothing** — people expect a union and get zero rows. |
+| 1 | **Every filter is `AND`.** Filling more boxes always narrows, never widens. | Nothing here is a union. On the metadata tab, a client plus a facility plus a date range means all three at once. |
+| 1b | **Direct lookup is account numbers *or* encounter IDs, never both.** | Because of rule 1 the two lists intersect, so an account list beside unrelated encounters matched nothing. Filling one box now disables the other, and the API rejects both. |
 | 2 | **From/To beat the Service date range, and must be a pair.** | Picking "Last 7 days" *and* a From date silently discards the preset. One-sided ranges are rejected outright, because they widened the search instead of narrowing it. |
 | 3 | **Client and Facility are required on the metadata tab.** Blank is a form error. | "Search everything" has to be chosen with the explicit **All clients** / **All facilities** entry, not by leaving a box alone. |
 | 4 | **Only the last three months are searchable.** | webdb keeps three months of documents, so an older encounter has no files to fetch. `overall_data` is bounded on its indexed `month` column, which is also what keeps these queries fast. |
@@ -199,10 +200,14 @@ encounter ID (comma, space, or newline separated). `POST /api/search`.
 
 Select one or more output file types, search, then download the matching files as a ZIP.
 
-**The two boxes are combined with `AND`, not `OR`.** Each filter is appended as
-another `AND <column> IN (…)`, so an encounter has to belong to one of the
-accounts listed as well as being in the encounter list. Against production, for
-client `CHS`:
+**Account numbers and encounter IDs are alternatives — fill one box or the
+other.** Typing in either one disables the other, and `POST /api/search` rejects
+a request carrying both with a 400.
+
+This is a consequence of every filter being `AND`. Each is appended as another
+`AND <column> IN (…)`, so the two lists *intersect* rather than combining: an
+encounter had to appear in the encounter list **and** belong to one of the listed
+accounts. Measured against production for client `CHS`:
 
 | Account numbers | Encounter IDs | Result |
 | --- | --- | --- |
@@ -211,10 +216,10 @@ client `CHS`:
 | `60768137` | `37435765` — same encounter | 1 row |
 | `60768137` | `37435770` — a different encounter | **0 rows** |
 
-So pasting a list of accounts alongside a list of unrelated encounter IDs returns
-nothing at all. To look up both sets, search them one box at a time. An empty
-result with both boxes filled is called out explicitly in the status line rather
-than being reported as a flat "0 encounters".
+That last row is the trap: pasting a list of accounts beside a list of unrelated
+encounter IDs returned nothing at all, with no indication why. Rather than
+explaining the empty result, the combination is now simply unavailable — search
+one set, then the other.
 
 ## commonDb
 

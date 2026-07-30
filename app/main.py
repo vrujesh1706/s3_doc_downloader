@@ -149,6 +149,27 @@ def _require_file_types(selected_files: list) -> None:
         )
 
 
+# Accounts and encounters are alternatives, not a combined filter. They are
+# applied as `AND account_number IN (...) AND encounter_id IN (...)`, so a list
+# of accounts beside a list of unrelated encounters matches nothing -- the two
+# have to describe the same encounters to return anything at all. The UI now
+# disables one box once the other is used; this keeps direct API callers honest
+# too, rather than handing them a silent empty result.
+def _require_one_direct_filter(request: SearchRequest) -> None:
+    has_accounts = bool(request.account_numbers)
+    has_encounters = bool(request.encounter_ids)
+    if not (has_accounts or has_encounters):
+        raise HTTPException(status_code=400, detail="Enter an account number or an encounter ID.")
+    if has_accounts and has_encounters:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Search by account number or by encounter ID, not both. They are combined with AND, "
+                "so passing both only matches encounters that satisfy each list at once."
+            ),
+        )
+
+
 def _engine_for(environment: str, client: str):
     if client not in list_client_codes(environment):
         raise HTTPException(status_code=400, detail=f"Unknown client '{client}' for environment '{environment}'.")
@@ -158,8 +179,7 @@ def _engine_for(environment: str, client: str):
 @app.post("/api/search")
 def search(request: SearchRequest) -> dict[str, object]:
     _require_file_types(request.selected_files)
-    if not any([request.account_numbers, request.encounter_ids]):
-        raise HTTPException(status_code=400, detail="Enter at least one account or encounter filter.")
+    _require_one_direct_filter(request)
 
     rows = search_documents(_engine_for(request.environment, request.client), request)
     encounters = group_by_encounter(rows, request.selected_files)
@@ -245,8 +265,7 @@ def metadata_search(request: MetadataSearchRequest) -> dict[str, object]:
 
 def _rows_to_download(request: DownloadRequest) -> list[dict]:
     _require_file_types(request.selected_files)
-    if not any([request.account_numbers, request.encounter_ids]):
-        raise HTTPException(status_code=400, detail="Enter at least one account or encounter filter.")
+    _require_one_direct_filter(request)
 
     rows = search_documents(_engine_for(request.environment, request.client), request)
     if request.result_ids:
