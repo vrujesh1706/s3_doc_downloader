@@ -77,11 +77,15 @@ function hideProgress() {
   progressCountEl.textContent = "";
 }
 
+// Used only for the two identifier lists, so a token has to contain a digit to
+// be one. Without that check, stripping letters out of pasted junk can leave a
+// bare "--" behind, which would go to the API as an id and quietly return no
+// rows instead of being ignored.
 function splitValues(value) {
   return value
     .split(/[\s,]+/)
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter((item) => /[0-9]/.test(item));
 }
 
 function selectedFiles() {
@@ -135,6 +139,32 @@ function metadataFilters() {
   if (dateFrom) filters.date_from = dateFrom;
   if (dateTo) filters.date_to = dateTo;
   return filters;
+}
+
+// Account numbers and encounter IDs are numeric identifiers, so anything that is
+// not a digit is dropped as it is typed or pasted.
+//
+// Commas and hyphens stay because they are part of the format: account numbers
+// look like 9619150-720680, and lists are comma separated. Whitespace stays
+// because `splitValues` treats it as a separator -- stripping it would silently
+// weld a newline-separated paste out of a spreadsheet into one long, wrong id
+// rather than rejecting anything.
+const ID_DISALLOWED = /[^0-9,\-\s]/g;
+const ID_ALLOWED = /[0-9,\-\s]/g;
+
+function sanitizeIdList(el) {
+  const before = el.value;
+  const cleaned = before.replace(ID_DISALLOWED, "");
+  if (cleaned === before) return;
+
+  // Assigning .value drops the caret to the end, which makes editing the middle
+  // of a long pasted list impossible. Put it back where it was, less however many
+  // characters were removed ahead of it.
+  const caret = el.selectionStart;
+  const removedBefore = before.slice(0, caret).replace(ID_ALLOWED, "").length;
+  el.value = cleaned;
+  const position = caret - removedBefore;
+  el.setSelectionRange(position, position);
 }
 
 // Direct lookup takes accounts or encounters, never both. They used to combine
@@ -901,7 +931,10 @@ environmentEl.addEventListener("change", () => {
 });
 
 for (const el of [accountNumbersEl, encounterIdsEl]) {
-  el.addEventListener("input", syncDirectFilters);
+  el.addEventListener("input", () => {
+    sanitizeIdList(el);
+    syncDirectFilters();
+  });
 }
 
 clientCodesEl.addEventListener("change", () => {
