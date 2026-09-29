@@ -12,6 +12,7 @@ from .models import FileColumn, SearchRequest
 
 FILE_COLUMNS: dict[str, str] = {
     "nlp_pcs_xml_result_s3_path": "PCS XML result",
+    "nlp_cdp_xml_result_s3_path": "CDP XML result",
     "eandmcs_request_s3_path": "E/M request",
     "eandmcs_result_s3_path": "E/M result",
     "cptcs_request_s3_path": "CPT request",
@@ -29,7 +30,11 @@ SELECT
     am.client_id,
     am.facility_id,
     dm.service_date,
+    dm.id AS document_id,
+    dpd.facility_code,
+    dpd.document_type AS worktype,
     dpd.nlp_pcs_xml_result_s3_path,
+    dpd.nlp_cdp_xml_result_s3_path,
     epm.eandmcs_request_s3_path,
     epm.eandmcs_result_s3_path,
     epm.cptcs_request_s3_path,

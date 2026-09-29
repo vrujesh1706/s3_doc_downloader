@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 FileColumn = Literal[
     "nlp_pcs_xml_result_s3_path",
+    "nlp_cdp_xml_result_s3_path",
     "eandmcs_request_s3_path",
     "eandmcs_result_s3_path",
     "cptcs_request_s3_path",

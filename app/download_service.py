@@ -134,6 +134,14 @@ class DownloadItem:
     folder: str
     key: str
     column: str
+    filename: str
+
+
+def download_filename(row: dict[str, Any], column: str, key: str) -> str:
+    if column == "filePath":
+        fields = ("account_number", "encounter_id", "facility_code", "worktype", "document_id")
+        return "_".join(safe_part(row.get(field), f"unknown_{field}") for field in fields) + ".txt"
+    return posixpath.basename(key) or f"{column}.dat"
 
 
 def collect_download_items(
@@ -153,19 +161,23 @@ def collect_download_items(
     """
     seen_keys: set[tuple[str, str]] = set()
     items: list[DownloadItem] = []
+    originals_only = folder_structure == "single_folder" and set(file_columns) == {"filePath"}
     for row in rows:
         encounter = str(row.get("id") or row.get("encounter_id") or "")
-        folder = output_folder(row, folder_structure)
+        encounter_folder = output_folder(row, folder_structure)
+        folder = "files" if originals_only else encounter_folder
         for column in file_columns:
             if is_blank(row.get(column)):
                 continue
             key = s3_key(column, row[column], bucket)
-            dedup_id = (folder, key)
+            # Keep each encounter's files even when all encounters share a folder.
+            dedup_id = (encounter_folder, key)
             if dedup_id in seen_keys:
                 continue
             seen_keys.add(dedup_id)
             items.append(
-                DownloadItem(encounter=encounter, folder=folder, key=key, column=column)
+                DownloadItem(encounter=encounter, folder=folder, key=key, column=column,
+                             filename=download_filename(row, column, key))
             )
     return items
 
@@ -222,7 +234,7 @@ def zip_documents(
     used_names: set[str] = set()
     plan: list[tuple[DownloadItem, str, str]] = []
     for item in items:
-        original_name = posixpath.basename(item.key) or f"{item.column}.dat"
+        original_name = item.filename
         zip_name = unique_zip_name(f"{item.folder}/{original_name}", used_names)
         plan.append((item, zip_name, original_name))
 
