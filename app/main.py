@@ -30,7 +30,7 @@ from .models import (
     MetadataSearchRequest,
     SearchRequest,
 )
-from .query_service import FILE_COLUMNS, group_by_encounter, row_id, search_documents
+from .query_service import FILE_COLUMNS, group_by_encounter, normalize_values, row_id, search_documents
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +156,8 @@ def _require_file_types(selected_files: list) -> None:
 # disables one box once the other is used; this keeps direct API callers honest
 # too, rather than handing them a silent empty result.
 def _require_one_direct_filter(request: SearchRequest) -> None:
+    request.account_numbers = normalize_values(request.account_numbers)
+    request.encounter_ids = normalize_values(request.encounter_ids)
     has_accounts = bool(request.account_numbers)
     has_encounters = bool(request.encounter_ids)
     if not (has_accounts or has_encounters):

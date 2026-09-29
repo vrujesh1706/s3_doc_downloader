@@ -171,6 +171,9 @@ def search_documents(engine: Engine, request: SearchRequest) -> list[dict[str, A
         ("encounter_ids", "epm.encounter_id", normalize_values(request.encounter_ids)),
     ]
 
+    if sum(bool(values) for _, _, values in filter_map) != 1:
+        raise ValueError("Enter account numbers or encounter IDs, not both; blank values are ignored.")
+
     for param_name, sql_column, values in filter_map:
         if values:
             filters.append(f"AND {sql_column} IN :{param_name}")
