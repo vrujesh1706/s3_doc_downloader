@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
+from contextlib import asynccontextmanager
 import threading
 import uuid
 from dataclasses import dataclass
@@ -8,13 +11,13 @@ from dataclasses import dataclass
 import uvicorn
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 
 from .config import get_settings
 from .database import get_client_engine, get_common_engine, list_client_codes
-from .download_service import ZipProgress, download_totals, zip_documents
+from .download_service import ZipProgress, ZipResult, download_totals, zip_documents
 from .metadata_service import (
     distinct_client_codes,
     facility_options,
@@ -45,13 +48,49 @@ class DownloadJob:
     skipped_count: int = 0
     status: str = "running"  # running | done | error
     error: str | None = None
-    data: bytes | None = None
+    archive: ZipResult | None = None
+    expires_at: float | None = None
+    active_transfers: int = 0
+    delivered: bool = False
 
 
 _jobs: dict[str, DownloadJob] = {}
 _jobs_lock = threading.Lock()
 
-app = FastAPI(title="S3 Document Downloader")
+def _cleanup_expired_jobs() -> None:
+    with _jobs_lock:
+        for job_id, job in list(_jobs.items()):
+            if (job.expires_at is not None and job.expires_at <= time.monotonic()
+                    and not job.active_transfers):
+                if job.archive is not None:
+                    job.archive.cleanup()
+                _jobs.pop(job_id, None)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    async def cleanup_loop():
+        while True:
+            await asyncio.sleep(60)
+            await asyncio.to_thread(_cleanup_expired_jobs)
+
+    task = asyncio.create_task(cleanup_loop())
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        with _jobs_lock:
+            for job in _jobs.values():
+                if job.archive is not None:
+                    job.archive.cleanup()
+            _jobs.clear()
+
+
+app = FastAPI(title="S3 Document Downloader", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
@@ -303,19 +342,27 @@ def _run_download_job(
             progress_callback=on_progress,
         )
         with _jobs_lock:
+            # A shutdown may have cleared the job while S3 was still running.
+            if _jobs.get(job_id) is not job:
+                result.cleanup()
+                return
             job.file_count = result.file_count
             job.skipped_count = result.skipped_count
             if result.file_count == 0:
+                result.cleanup()
                 job.status = "error"
                 job.error = "No selected S3 files were available for the matching rows."
             else:
-                job.data = result.data
+                job.archive = result
                 job.status = "done"
     except Exception as exc:  # noqa: BLE001 - surface any failure to the client
         logger.exception("Download job %s failed", job_id)
         with _jobs_lock:
             job.status = "error"
             job.error = str(exc)
+    finally:
+        with _jobs_lock:
+            job.expires_at = time.monotonic() + get_settings().download_job_ttl_seconds
 
 
 def _start_download_job(
@@ -327,13 +374,24 @@ def _start_download_job(
 
     job_id = uuid.uuid4().hex
     job = DownloadJob(encounters_total=encounters_total, files_total=files_total)
+    _cleanup_expired_jobs()
     with _jobs_lock:
+        if len(_jobs) >= get_settings().max_download_jobs:
+            raise HTTPException(
+                status_code=429,
+                detail="Download capacity is full. Fetch existing downloads or wait for them to expire.",
+            )
         _jobs[job_id] = job
 
     thread = threading.Thread(
         target=_run_download_job, args=(job_id, job, request, rows), daemon=True
     )
-    thread.start()
+    try:
+        thread.start()
+    except Exception:
+        with _jobs_lock:
+            _jobs.pop(job_id, None)
+        raise
     return {"job_id": job_id, "encounters_total": encounters_total, "files_total": files_total}
 
 
@@ -375,25 +433,57 @@ def download_progress(job_id: str) -> dict[str, object]:
     return payload
 
 
+class DownloadFileResponse(FileResponse):
+    """Release the file after sending, including when the connection fails."""
+
+    def __init__(self, job_id: str, job: DownloadJob):
+        super().__init__(
+            path=job.archive.path,
+            media_type="application/zip",
+            filename="s3_document_downloads.zip",
+            headers={
+                "X-Downloaded-Files": str(job.file_count),
+                "X-Skipped-Files": str(job.skipped_count),
+            },
+        )
+        self.job_id = job_id
+        self.job = job
+
+    async def __call__(self, scope, receive, send):
+        delivered = False
+        status_code = None
+
+        async def track_send(message):
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+            await send(message)
+
+        try:
+            await super().__call__(scope, receive, track_send)
+            # HEAD, range requests and rejected ranges do not deliver the full ZIP.
+            delivered = scope["method"] == "GET" and status_code == 200
+        finally:
+            with _jobs_lock:
+                self.job.active_transfers -= 1
+                self.job.delivered |= delivered
+                if self.job.delivered and not self.job.active_transfers:
+                    self.job.archive.cleanup()
+                    _jobs.pop(self.job_id, None)
+
+
 @app.get("/api/download/file/{job_id}")
-def download_file(job_id: str) -> Response:
+def download_file(job_id: str) -> FileResponse:
+    _cleanup_expired_jobs()
     with _jobs_lock:
         job = _jobs.get(job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="Unknown or expired download job.")
-        if job.status != "done" or job.data is None:
+        if job.status != "done" or job.archive is None:
             raise HTTPException(status_code=409, detail="Download is not ready yet.")
-        data = job.data
-        file_count = job.file_count
-        skipped_count = job.skipped_count
-        _jobs.pop(job_id, None)
-
-    headers = {
-        "Content-Disposition": 'attachment; filename="s3_document_downloads.zip"',
-        "X-Downloaded-Files": str(file_count),
-        "X-Skipped-Files": str(skipped_count),
-    }
-    return Response(content=data, media_type="application/zip", headers=headers)
+        response = DownloadFileResponse(job_id, job)
+        job.active_transfers += 1
+        return response
 
 
 if __name__ == "__main__":

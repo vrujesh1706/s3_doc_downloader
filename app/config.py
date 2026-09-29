@@ -23,7 +23,10 @@ def _int_env(name: str, default: int) -> int:
     value = os.getenv(name)
     if value is None or value.strip() == "":
         return default
-    return int(value)
+    result = int(value)
+    if result <= 0:
+        raise ValueError(f"{name} must be a positive integer.")
+    return result
 
 
 @dataclass(frozen=True)
@@ -78,6 +81,9 @@ class Settings:
     common_db: CommonDB
     max_search_rows: int
     max_download_files: int
+    max_download_bytes: int = 1024 * 1024 * 1024
+    max_download_jobs: int = 2
+    download_job_ttl_seconds: int = 3600
 
     def environment(self, name: str) -> DBEnvironment:
         try:
@@ -138,4 +144,7 @@ def get_settings() -> Settings:
         common_db=common_db,
         max_search_rows=_int_env("MAX_SEARCH_ROWS", 5000),
         max_download_files=_int_env("MAX_DOWNLOAD_FILES", 2500),
+        max_download_bytes=_int_env("MAX_DOWNLOAD_BYTES", 1024 * 1024 * 1024),
+        max_download_jobs=_int_env("MAX_DOWNLOAD_JOBS", 2),
+        download_job_ttl_seconds=_int_env("DOWNLOAD_JOB_TTL_SECONDS", 3600),
     )

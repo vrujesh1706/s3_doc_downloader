@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-import io
 import logging
 import posixpath
 import re
+import tempfile
+import threading
+import uuid
 import zipfile
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable
 
 import boto3
@@ -26,9 +29,13 @@ DOWNLOAD_CONCURRENCY = 8
 
 @dataclass(frozen=True)
 class ZipResult:
-    data: bytes
+    path: Path
+    directory: tempfile.TemporaryDirectory
     file_count: int
     skipped_count: int
+
+    def cleanup(self) -> None:
+        self.directory.cleanup()
 
 
 @dataclass(frozen=True)
@@ -197,19 +204,52 @@ def download_totals(
     return encounters, len(items)
 
 
+CHUNK_SIZE = 1024 * 1024
+
+
+class DownloadLimitError(ValueError):
+    pass
+
+
+class DownloadBudget:
+    def __init__(self, limit: int):
+        self.limit = limit
+        self.used = 0
+        self.lock = threading.Lock()
+
+    def consume(self, size: int) -> None:
+        with self.lock:
+            if self.used + size > self.limit:
+                raise DownloadLimitError(
+                    "Download exceeds MAX_DOWNLOAD_BYTES. Select fewer files."
+                )
+            self.used += size
+
+
 def _fetch_object(
-    s3: Any, bucket: str, item: DownloadItem, zip_name: str, original_name: str
-) -> tuple[DownloadItem, str, str, bytes | None, Exception | None]:
-    """Fetch one S3 object's bytes. Runs on a worker thread, so it only does
-    network I/O and never touches the shared ZIP."""
+    s3: Any, bucket: str, item: DownloadItem, zip_name: str, original_name: str,
+    directory: str, budget: DownloadBudget,
+) -> tuple[DownloadItem, str, str, Path | None, str | None]:
+    """Stream to disk in fixed-size chunks; never retain full objects in RAM."""
+    path = Path(directory) / uuid.uuid4().hex
+    body = None
     try:
-        obj = s3.get_object(Bucket=bucket, Key=item.key)
-        return item, zip_name, original_name, obj["Body"].read(), None
-    except Exception as exc:  # noqa: BLE001 - reported per file, never fatal
-        # Logged as well as written into the ZIP, so a systematically wrong key
-        # for one file type is visible in the server log.
+        body = s3.get_object(Bucket=bucket, Key=item.key)["Body"]
+        with path.open("wb") as output:
+            while chunk := body.read(CHUNK_SIZE):
+                budget.consume(len(chunk))
+                output.write(chunk)
+        return item, zip_name, original_name, path, None
+    except DownloadLimitError:
+        path.unlink(missing_ok=True)
+        raise
+    except Exception as exc:  # per-file failures still produce a note in the ZIP
+        path.unlink(missing_ok=True)
         logger.warning("S3 fetch failed (%s) s3://%s/%s: %s", item.column, bucket, item.key, exc)
-        return item, zip_name, original_name, None, exc
+        return item, zip_name, original_name, None, str(exc)
+    finally:
+        if body is not None:
+            body.close()
 
 
 def zip_documents(
@@ -222,7 +262,6 @@ def zip_documents(
     settings = get_settings()
     env = settings.environment(environment)
     bucket = env.s3_bucket
-    s3 = boto3.client("s3")
     file_columns = selected_file_columns(selected_files)
 
     items = collect_download_items(rows, file_columns, bucket, folder_structure)
@@ -241,7 +280,7 @@ def zip_documents(
     to_fetch = plan[: settings.max_download_files]
     capped = plan[settings.max_download_files :]
 
-    zip_buffer = io.BytesIO()
+    budget = DownloadBudget(settings.max_download_bytes)
     file_count = 0
     skipped_count = 0
     files_done = 0
@@ -268,34 +307,50 @@ def zip_documents(
                 )
             )
 
-    report()
-    # Fetch objects concurrently; write them into the archive from this thread as
-    # each fetch completes (zipfile is single-threaded, S3 GETs are not).
-    with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
-        if to_fetch:
+    directory = tempfile.TemporaryDirectory(prefix="s3-download-")
+    zip_path = Path(directory.name) / "documents.zip"
+    s3 = None
+    try:
+        s3 = boto3.client("s3")
+        report()
+        with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
             with ThreadPoolExecutor(max_workers=DOWNLOAD_CONCURRENCY) as executor:
-                futures = [
-                    executor.submit(_fetch_object, s3, bucket, item, zip_name, original_name)
-                    for item, zip_name, original_name in to_fetch
-                ]
-                for future in as_completed(futures):
-                    item, zip_name, original_name, data, error = future.result()
-                    if error is None and data is not None:
-                        archive.writestr(zip_name, data)
-                        file_count += 1
-                    else:
-                        skipped_count += 1
-                        failed_name = unique_zip_name(
-                            f"{item.folder}/FAILED_{original_name}.txt", used_names
+                # At most one batch of objects is staged on disk at a time.
+                for offset in range(0, len(to_fetch), DOWNLOAD_CONCURRENCY):
+                    futures = [
+                        executor.submit(
+                            _fetch_object, s3, bucket, item, zip_name, original_name,
+                            directory.name, budget,
                         )
-                        archive.writestr(failed_name, f"{item.column}\n{item.key}\n{error}\n")
-                    mark_item_done(item)
-                    report()
+                        for item, zip_name, original_name in to_fetch[offset:offset + DOWNLOAD_CONCURRENCY]
+                    ]
+                    for future in as_completed(futures):
+                        item, zip_name, original_name, path, error = future.result()
+                        if error is None and path is not None:
+                            archive.write(path, zip_name)
+                            path.unlink()
+                            file_count += 1
+                        else:
+                            skipped_count += 1
+                            failed_name = unique_zip_name(
+                                f"{item.folder}/FAILED_{original_name}.txt", used_names
+                            )
+                            archive.writestr(failed_name, f"{item.column}\n{item.key}\n{error}\n")
+                        mark_item_done(item)
+                        report()
 
-        # Files past the safety cap are not downloaded, just accounted for.
-        for item, _zip_name, _original_name in capped:
-            skipped_count += 1
-            mark_item_done(item)
-            report()
+            for item, _zip_name, _original_name in capped:
+                skipped_count += 1
+                mark_item_done(item)
+                report()
 
-    return ZipResult(data=zip_buffer.getvalue(), file_count=file_count, skipped_count=skipped_count)
+        return ZipResult(
+            path=zip_path, directory=directory,
+            file_count=file_count, skipped_count=skipped_count,
+        )
+    except BaseException:
+        directory.cleanup()
+        raise
+    finally:
+        if s3 is not None:
+            s3.close()
