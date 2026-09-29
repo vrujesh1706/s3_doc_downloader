@@ -20,7 +20,7 @@ from .metadata_service import (
     facility_options,
     group_encounters_by_client,
     has_any_filter,
-    latest_service_date,
+    latest_coding_date,
     search_overall_data,
     webdb_client_code,
 )
@@ -245,15 +245,15 @@ def _resolve_via_common_db(request: MetadataSearchRequest) -> tuple[list[dict], 
 
     # An empty result is nearly always "the data does not reach that far
     # forward" -- overall_data lags real time -- so say what the newest matching
-    # service date actually is instead of just reporting zero.
+    # coding date actually is instead of just reporting zero.
     if not metadata_rows:
         try:
-            newest = latest_service_date(get_common_engine(), request.filters)
+            newest = latest_coding_date(get_common_engine(), request.filters)
         except SQLAlchemyError:
-            logger.exception("Could not determine the newest service date")
+            logger.exception("Could not determine the newest coding date")
             newest = None
         if newest is not None:
-            summary["latest_service_date"] = str(newest)
+            summary["latest_coding_date"] = str(newest)
 
     return rows, summary
 

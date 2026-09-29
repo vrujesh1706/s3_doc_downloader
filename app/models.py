@@ -35,6 +35,9 @@ class MetadataFilters(BaseModel):
     """Filters applied to `commonDb.overall_data` to find encounters.
 
     `date_from`/`date_to` are inclusive and take precedence over `date_range`.
+    All three filter `last_coding_date`, not `service_date` -- the coding date is
+    the axis webdb retention follows, so it is what decides whether an encounter
+    still has files to download.
     """
 
     date_range: DateRange = "any"

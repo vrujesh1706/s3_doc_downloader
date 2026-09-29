@@ -1,7 +1,7 @@
 """Encounter lookup against `commonDb.overall_data`.
 
 `overall_data` is the metadata layer: one row per processed encounter, covering
-every client, with the business fields people actually search by (service date,
+every client, with the business fields people actually search by (coding date,
 client, facility, account, document type). It holds no S3 paths -- its job is to
 answer "which encounters do you mean?". The resolved encounter ids are then
 handed to the per-client webdb query, which is what knows the file locations.
@@ -28,15 +28,17 @@ TABLE = "overall_data"
 # Three, because webdb only retains the last three months of documents -- an
 # older encounter has no files left to download, so there is nothing to gain by
 # finding it. It is also what makes these queries viable: overall_data holds
-# ~17M rows and neither `client_code` nor `service_date` is indexed, so an
+# ~17M rows and neither `client_code` nor `last_coding_date` is indexed, so an
 # unbounded scan takes minutes. `month` *is* indexed, so bounding on it keeps
 # both the dropdowns and the search fast.
 #
 # `month` is the coding month (it tracks last_coding_date), not the month of
 # service -- which is the right axis here, since it matches how webdb retains
-# documents. It is *not* interchangeable with service_date: within a single
-# `month` the service dates span years, so a service-date filter is still
-# applied separately and directly.
+# documents. The user-facing date filter is on `last_coding_date` for the same
+# reason, so window and filter now measure the same thing: a coding-date range
+# inside the window narrows it, where a service-date range cut across it
+# (within a single `month` the service dates span years, so "last 7 days" of
+# service could exclude encounters coded yesterday and vice versa).
 MONTH_WINDOW = 3
 
 
@@ -78,7 +80,7 @@ def resolve_date_range(
             missing = "To" if filters.date_from else "From"
             raise ValueError(
                 f"Enter both From and To -- {missing} is missing. A one-sided date range is not "
-                "allowed; clear both to use the Service date range instead."
+                "allowed; clear both to use the Coding date range instead."
             )
         if filters.date_from > filters.date_to:
             raise ValueError("date_from cannot be after date_to.")
@@ -139,14 +141,16 @@ def _build_conditions(filters: MetadataFilters, include_dates: bool = True) -> l
     if date_range is not None:
         start, end = date_range
         if start is not None:
-            conditions.append(_Condition("service_date >= :date_from", "date_from", start))
+            conditions.append(_Condition("last_coding_date >= :date_from", "date_from", start))
         if end is not None:
-            # service_date is a datetime, so the end day is bounded exclusively
-            # at the next midnight -- otherwise everything after 00:00 on the
-            # last day would be dropped.
+            # last_coding_date is a datetime, so the end day is bounded
+            # exclusively at the next midnight -- otherwise everything after
+            # 00:00 on the last day would be dropped.
             conditions.append(
                 _Condition(
-                    "service_date < :date_to_exclusive", "date_to_exclusive", end + timedelta(days=1)
+                    "last_coding_date < :date_to_exclusive",
+                    "date_to_exclusive",
+                    end + timedelta(days=1),
                 )
             )
 
@@ -200,7 +204,7 @@ def search_overall_data(engine: Engine, filters: MetadataFilters) -> list[dict[s
     params["limit"] = settings.max_search_rows
 
     where_sql = "\n  AND ".join(condition.sql for condition in conditions)
-    # No ORDER BY on purpose. `service_date` is not indexed, so ordering by it
+    # No ORDER BY on purpose. No date column here is indexed, so ordering by one
     # forces MySQL to materialise and sort every matching row before applying the
     # LIMIT -- on a large client that filesort exhausted the server's temp disk
     # ("No space left on device"). Without it the rows stream out and the LIMIT
@@ -343,11 +347,11 @@ def facility_options(client_code: str) -> tuple[tuple[str, str], ...]:
     )
 
 
-def latest_service_date(engine: Engine, filters: MetadataFilters) -> Any:
-    """Newest service_date matching everything *except* the date filter.
+def latest_coding_date(engine: Engine, filters: MetadataFilters) -> Any:
+    """Newest last_coding_date matching everything *except* the date filter.
 
     Used only to explain an empty result ("nothing that recent -- the newest is
-    X"). `service_date` is unindexed, so this is deliberately restricted to
+    X"). `last_coding_date` is unindexed, so this is deliberately restricted to
     searches that carry a non-date filter to keep the scan bounded.
     """
     conditions = _build_conditions(filters, include_dates=False)
@@ -361,7 +365,7 @@ def latest_service_date(engine: Engine, filters: MetadataFilters) -> Any:
     params = {condition.param: condition.value for condition in conditions}
     where_sql = "\n  AND ".join(condition.sql for condition in conditions)
 
-    statement = text(f"SELECT MAX(service_date) FROM {TABLE}\nWHERE {where_sql}")
+    statement = text(f"SELECT MAX(last_coding_date) FROM {TABLE}\nWHERE {where_sql}")
     for condition in conditions:
         if condition.expanding:
             statement = statement.bindparams(bindparam(condition.param, expanding=True))

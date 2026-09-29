@@ -666,7 +666,7 @@ async function search() {
     if (Boolean(dateFrom) !== Boolean(dateTo)) {
       setStatus(
         `Enter both From and To — ${dateFrom ? "To" : "From"} is missing. ` +
-          "A one-sided date range is not allowed; clear both to use the Service date range instead.",
+          "A one-sided date range is not allowed; clear both to use the Coding date range instead.",
         true,
       );
       return;
@@ -739,9 +739,9 @@ async function search() {
       }
       if (!data.metadata_match_count) {
         // Almost always a date-range miss: overall_data lags real time, so the
-        // newest available service date is the useful thing to report.
-        message = data.latest_service_date
-          ? `No encounters with a service date in that range. The most recent one for this selection is ${data.latest_service_date.slice(0, 10)} — try widening the date range.`
+        // newest available coding date is the useful thing to report.
+        message = data.latest_coding_date
+          ? `No encounters with a coding date in that range. The most recent one for this selection is ${data.latest_coding_date.slice(0, 10)} — try widening the date range.`
           : "commonDb matched 0 encounters. Try widening the date range or clearing a filter.";
         warn = true;
       }
